@@ -85,13 +85,12 @@ class LasToHeightmap {
 
 		addPoints(pointsAt(x, y));
 
-		auto &v = pointMatrix[y][x];
-		auto result = std::min_element(v.begin(), v.end(),
-				[](Point p1, Point p2) { return p1.z < p2.z; });
-		if (result != v.end()) {
-			return result->z;
-		} else {
+		if(neighbourPoints.empty()) {
 			return 0;
+		} else {
+			std::sort(neighbourPoints.begin(), neighbourPoints.end(), [](Point p1, Point p2) { return p1.z < p2.z; });
+
+			return neighbourPoints[0].z;
 		}
 	}
 
