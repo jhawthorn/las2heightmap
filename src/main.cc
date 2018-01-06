@@ -39,8 +39,6 @@ class LasToHeightmap {
 		pointMatrix[(int)y][(int)x].push_back(point);
 	}
 
-	std::vector<Point> emptyVector;
-
 	public:
 
 	std::vector<Point> (*pointMatrix)[WIDTH];
@@ -70,7 +68,7 @@ class LasToHeightmap {
 
 	std::vector<Point> *pointsAt(int x, int y) {
 		if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
-			return &emptyVector;
+			return NULL;
 		} else {
 			return &pointMatrix[y][x];
 		}
@@ -80,7 +78,9 @@ class LasToHeightmap {
 		std::vector<Point> neighbourPoints;
 
 		auto addPoints = [&](std::vector<Point> *v) {
-			std::copy(v->begin(), v->end(), std::back_inserter(neighbourPoints));
+			if (v) {
+				std::copy(v->begin(), v->end(), std::back_inserter(neighbourPoints));
+			}
 		};
 
 		for (int dy = -range; dy <= range; dy++) {
