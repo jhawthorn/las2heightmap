@@ -26,7 +26,7 @@ class LasToHeightmap {
 		double z = (lasPoint.GetZ());
 		uint8_t classification = lasPoint.GetClassification().GetClass();
 
-		if (classification == 2 || classification == 3)
+		if (classification == 3 || classification == 5)
 			return;
 
 		if ((int)x >= WIDTH)
