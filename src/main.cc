@@ -10,6 +10,7 @@ using namespace std;
 struct Point {
 	double x, y, z;
 	uint8_t classification;
+	uint8_t intensity;
 };
 
 class LasToHeightmap {
@@ -17,15 +18,16 @@ class LasToHeightmap {
 
 	double offsetX;
 	double offsetY;
+	double offsetZ;
 	double scaleX;
 	double scaleY;
 
 	void addPoint(liblas::Point lasPoint) {
 		double x = (lasPoint.GetX() - offsetX) * scaleX;
 		double y = (lasPoint.GetY() - offsetY) * scaleY;
-		double z = (lasPoint.GetZ());
+		double z = (lasPoint.GetZ() - offsetZ);
 		uint8_t classification = lasPoint.GetClassification().GetClass();
-
+		uint16_t intensity = lasPoint.GetIntensity();
 		if (classification == 3 || classification == 5)
 			return;
 
@@ -34,7 +36,10 @@ class LasToHeightmap {
 		if ((int)y >= HEIGHT)
 			y = HEIGHT-1;
 
-		Point point = {x,y,z,classification};
+		if (intensity > 255)
+			intensity = 255;
+
+		Point point = {x,y,z,classification,(uint8_t)intensity};
 
 		pointMatrix[(int)y][(int)x].push_back(point);
 	}
@@ -51,6 +56,8 @@ class LasToHeightmap {
 		auto lasHeader = las.GetHeader();
 		offsetX = lasHeader.GetMinX();
 		offsetY = lasHeader.GetMaxY();
+
+		offsetZ = -16;
 
 		// FIXME: calculate this value
 		scaleX = WIDTH/1000.0;
@@ -74,7 +81,9 @@ class LasToHeightmap {
 		}
 	}
 
-	double heightAt(int x, int y, int range=2) {
+	/* Makes a "fake" point with some heuristics on the points around it */
+	Point pointAt(int x, int y, int range=2) {
+		Point point = {(double)x, (double)y, 0, 0};
 		std::vector<Point> neighbourPoints;
 
 		auto addPoints = [&](std::vector<Point> *v) {
@@ -90,11 +99,23 @@ class LasToHeightmap {
 		}
 
 		if(neighbourPoints.empty()) {
-			return 0;
+			return point;
 		} else {
 			std::sort(neighbourPoints.begin(), neighbourPoints.end(), [](Point p1, Point p2) { return p1.z < p2.z; });
 
-			return neighbourPoints[neighbourPoints.size() / 2].z;
+			double intensity = 0;
+			for(auto const& n: neighbourPoints) {
+				intensity += n.intensity;
+			}
+			intensity /= neighbourPoints.size();
+			point.intensity = intensity;
+
+			Point medianPoint = neighbourPoints[neighbourPoints.size() / 2];
+
+			point.z = medianPoint.z;
+			//point.intensity = medianPoint.intensity;
+
+			return point;
 		}
 	}
 
@@ -120,11 +141,12 @@ int main(int argc, char *argv[]) {
 
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
-			double z = lasToHeightmap.heightAt(x, y);
+			Point p = lasToHeightmap.pointAt(x, y);
+			double z = p.z;
 			if (z < 0)
 				z = 0;
 			unsigned short iz = z * 256;
-			output_image[y][x] = png::rgb_pixel(0, iz >> 8, iz & 0xff);
+			output_image[y][x] = png::rgb_pixel(p.intensity, iz >> 8, iz & 0xff);
 			//output_image[y][x] = png::rgb_pixel(z, z, z);
 		}
 	}
