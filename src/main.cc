@@ -76,14 +76,18 @@ class LasToHeightmap {
 		}
 	}
 
-	double heightAt(int x, int y) {
+	double heightAt(int x, int y, int range=2) {
 		std::vector<Point> neighbourPoints;
 
 		auto addPoints = [&](std::vector<Point> *v) {
 			std::copy(v->begin(), v->end(), std::back_inserter(neighbourPoints));
 		};
 
-		addPoints(pointsAt(x, y));
+		for (int dy = -range; dy <= range; dy++) {
+			for (int dx = -range; dx <= range; dx++) {
+				addPoints(pointsAt(x+dx, y+dy));
+			}
+		}
 
 		if(neighbourPoints.empty()) {
 			return 0;
