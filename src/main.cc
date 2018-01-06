@@ -90,7 +90,7 @@ class LasToHeightmap {
 		} else {
 			std::sort(neighbourPoints.begin(), neighbourPoints.end(), [](Point p1, Point p2) { return p1.z < p2.z; });
 
-			return neighbourPoints[0].z;
+			return neighbourPoints[neighbourPoints.size() / 2].z;
 		}
 	}
 
