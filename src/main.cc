@@ -89,7 +89,7 @@ class LasToHeightmap {
 	}
 
 	/* Makes a "fake" point with some heuristics on the points around it */
-	Point pointAt(int x, int y, int range=2) {
+	Point pointAt(int x, int y, int range=3) {
 		Point point = {(double)x + 0.5, (double)y + 0.5, 0, 0};
 		std::vector<Point> neighbourPoints;
 
@@ -150,6 +150,7 @@ int main(int argc, char *argv[]) {
 
 	std::ifstream input_file(input_filename, ios::in | ios::binary);
 
+	liblas::ReaderFactory f;
 	liblas::Reader input_reader(input_file);
 
 	LasToHeightmap lasToHeightmap(input_file);

@@ -3,7 +3,7 @@ SRCFILES := $(wildcard src/*.cc)
 OBJFILES := $(SRCFILES:%.cc=%.o)
 DEPFILES := $(OBJFILES:%.o=%.d)
 TARGET = las2heightmap
-CLEANFILES = $(CLEANFILES) $(DEPFILES) $(OBJFILES) $(TARGET)
+CLEANFILES = $(DEPFILES) $(OBJFILES) $(TARGET)
 CXXFLAGS ?= -O3 -g -Wall `libpng-config --cflags`
 LIBS ?= -llas `libpng-config --ldflags`
 
