@@ -11,6 +11,13 @@ struct Point {
 	double x, y, z;
 	uint8_t classification;
 	uint8_t intensity;
+
+	double distance(const Point &p) const {
+		double dx = p.x - x;
+		double dy = p.y - y;
+		double dz = p.z - z;
+		return sqrt(dx*dx + dy*dy + dz*dz);
+	}
 };
 
 class LasToHeightmap {
@@ -83,7 +90,7 @@ class LasToHeightmap {
 
 	/* Makes a "fake" point with some heuristics on the points around it */
 	Point pointAt(int x, int y, int range=2) {
-		Point point = {(double)x, (double)y, 0, 0};
+		Point point = {(double)x + 0.5, (double)y + 0.5, 0, 0};
 		std::vector<Point> neighbourPoints;
 
 		auto addPoints = [&](std::vector<Point> *v) {
@@ -101,18 +108,27 @@ class LasToHeightmap {
 		if(neighbourPoints.empty()) {
 			return point;
 		} else {
-			std::sort(neighbourPoints.begin(), neighbourPoints.end(), [](Point p1, Point p2) { return p1.z < p2.z; });
-
-			double intensity = 0;
-			for(auto const& n: neighbourPoints) {
-				intensity += n.intensity;
-			}
-			intensity /= neighbourPoints.size();
-			point.intensity = intensity;
+			std::sort(neighbourPoints.begin(), neighbourPoints.end(), [](const Point &p1, const Point &p2) { return p1.z < p2.z; });
 
 			Point medianPoint = neighbourPoints[neighbourPoints.size() / 2];
-
 			point.z = medianPoint.z;
+
+			/* Points at this exact x/y */
+			std::vector<Point> *exactPoints = pointsAt(x, y);
+			auto representativePoint = std::min_element(
+					neighbourPoints.begin(), neighbourPoints.end(),
+					[&](const Point &p1, const Point &p2) { return point.distance(p1) < point.distance(p2); }
+					);
+			if (representativePoint != exactPoints->end()) {
+				/* If we can find a point near out median z point, use its intensity */
+				//point.intensity = representativePoint->intensity;
+				point.intensity = representativePoint->intensity;
+			} else {
+				/* Otherwise, take the average */
+				cerr << "this should never happen" << endl;
+				point.intensity = 255; /*DEBUG*/
+			}
+
 			//point.intensity = medianPoint.intensity;
 
 			return point;
