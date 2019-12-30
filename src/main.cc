@@ -12,11 +12,15 @@ struct Point {
 	uint8_t classification;
 	uint8_t intensity;
 
-	double distance(const Point &p) const {
+	double distance2(const Point &p) const {
 		double dx = p.x - x;
 		double dy = p.y - y;
 		double dz = p.z - z;
-		return sqrt(dx*dx + dy*dy + dz*dz);
+		return dx*dx + dy*dy + dz*dz;
+	}
+
+	double distance(const Point &p) const {
+		return sqrt(distance2(p));
 	}
 };
 
@@ -117,7 +121,7 @@ class LasToHeightmap {
 			std::vector<Point> *exactPoints = pointsAt(x, y);
 			auto representativePoint = std::min_element(
 					neighbourPoints.begin(), neighbourPoints.end(),
-					[&](const Point &p1, const Point &p2) { return point.distance(p1) < point.distance(p2); }
+					[&](const Point &p1, const Point &p2) { return point.distance2(p1) < point.distance2(p2); }
 					);
 			if (representativePoint != exactPoints->end()) {
 				/* If we can find a point near out median z point, use its intensity */
