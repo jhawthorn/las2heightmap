@@ -39,6 +39,7 @@ class LasToHeightmap {
 		double z = (lasPoint.GetZ() - offsetZ);
 		uint8_t classification = lasPoint.GetClassification().GetClass();
 		uint16_t intensity = lasPoint.GetIntensity();
+		intensity /= 256;
 		if (classification == 3 || classification == 5)
 			return;
 
