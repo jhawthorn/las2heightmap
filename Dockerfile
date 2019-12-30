@@ -15,4 +15,6 @@ RUN apt-get install --no-install-recommends -y \
 
 COPY . /build/
 
+RUN cd /build && make
+
 ENTRYPOINT ["/build/las2heightmap"]
