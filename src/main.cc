@@ -157,9 +157,11 @@ int main(int argc, char *argv[]) {
 	liblas::ReaderFactory f;
 	liblas::Reader input_reader(input_file);
 
+	cout << "Collecting all points..." << endl;
 	LasToHeightmap lasToHeightmap(input_file);
 	lasToHeightmap.perform();
 
+	cout << "Creating heightmap..." << endl;
 	for (int y = 0; y < HEIGHT; y++) {
 		for (int x = 0; x < WIDTH; x++) {
 			Point p = lasToHeightmap.pointAt(x, y);
