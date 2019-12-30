@@ -13,12 +13,12 @@ LIBS ?= -llas `libpng-config --ldflags`
 all: $(TARGET)
 
 $(TARGET): $(OBJFILES)
-	$(CXX) $(LDFLAGS) -o $@ $(OBJFILES) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJFILES) $(LIBS)
 
 -include $(DEPFILES)
 
 %.o: %.cc Makefile
-	$(CXX) $(CFLAGS) -MMD -MP -MT "$*.d" -c -o $@ $<
+	$(CXX) $(CXXFLAGS) -MMD -MP -MT "$*.d" -c -o $@ $<
 
 # Clean
 clean:
