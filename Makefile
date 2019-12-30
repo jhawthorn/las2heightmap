@@ -4,7 +4,7 @@ OBJFILES := $(SRCFILES:%.cc=%.o)
 DEPFILES := $(OBJFILES:%.o=%.d)
 TARGET = las2heightmap
 CLEANFILES = $(DEPFILES) $(OBJFILES) $(TARGET)
-CXXFLAGS ?= -O3 -g -Wall `libpng-config --cflags`
+CXXFLAGS ?= -O3 -g -Wall -Wextra `libpng-config --cflags`
 LIBS ?= -llas `libpng-config --ldflags`
 
 # User configuration

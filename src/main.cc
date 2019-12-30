@@ -94,7 +94,7 @@ class LasToHeightmap {
 
 	/* Makes a "fake" point with some heuristics on the points around it */
 	Point pointAt(int x, int y, int range=3) {
-		Point point = {(double)x + 0.5, (double)y + 0.5, 0, 0};
+		Point point = {(double)x + 0.5, (double)y + 0.5, 0, 0, 0};
 		std::vector<Point> neighbourPoints;
 		neighbourPoints.reserve(2048);
 
