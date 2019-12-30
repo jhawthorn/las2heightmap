@@ -119,13 +119,11 @@ class LasToHeightmap {
 			Point medianPoint = neighbourPoints[neighbourPoints.size() / 2];
 			point.z = medianPoint.z;
 
-			/* Points at this exact x/y */
-			std::vector<Point> *exactPoints = pointsAt(x, y);
 			auto representativePoint = std::min_element(
 					neighbourPoints.begin(), neighbourPoints.end(),
 					[&](const Point &p1, const Point &p2) { return point.distance2(p1) < point.distance2(p2); }
 					);
-			if (representativePoint != exactPoints->end()) {
+			if (representativePoint != neighbourPoints.end()) {
 				/* If we can find a point near out median z point, use its intensity */
 				//point.intensity = representativePoint->intensity;
 				point.intensity = representativePoint->intensity;
