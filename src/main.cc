@@ -77,9 +77,6 @@ class LasToHeightmap {
 		scaleX = WIDTH/1000.0;
 		scaleY = -HEIGHT/1000.0;
 
-		for (int i = 0; i < 500; i++)
-			las.ReadNextPoint();
-
 		while (las.ReadNextPoint()) {
 			liblas::Point lasPoint = las.GetPoint();
 
