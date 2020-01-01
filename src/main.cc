@@ -116,7 +116,12 @@ class LasToHeightmap {
 		if(neighbourPoints.empty()) {
 			return point;
 		} else {
-			std::sort(neighbourPoints.begin(), neighbourPoints.end(), [](const Point &p1, const Point &p2) { return p1.z < p2.z; });
+			std::nth_element(
+					neighbourPoints.begin(),
+					neighbourPoints.begin() + (neighbourPoints.size() / 2),
+					neighbourPoints.end(),
+					[](const Point &p1, const Point &p2) { return p1.z < p2.z; }
+					);
 
 			Point medianPoint = neighbourPoints[neighbourPoints.size() / 2];
 			point.z = medianPoint.z;
