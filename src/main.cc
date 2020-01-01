@@ -40,7 +40,9 @@ class LasToHeightmap {
 		uint8_t classification = lasPoint.GetClassification().GetClass();
 		uint16_t intensity = lasPoint.GetIntensity();
 		intensity /= 256;
-		if (classification == 3 || classification == 5)
+
+		/* Skip vegetation, "other", and noise */
+		if (classification == 3 || classification == 4 || classification == 7 || classification == 8)
 			return;
 
 		if ((int)x >= WIDTH)
