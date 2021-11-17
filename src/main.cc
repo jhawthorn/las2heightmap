@@ -1,7 +1,14 @@
-#include <liblas/liblas.hpp>
-#include <png++/png.hpp>
+#include <memory>
 #include <iostream>
 #include <stdint.h>
+
+#include <pdal/PointTable.hpp>
+#include <pdal/PointView.hpp>
+#include <pdal/io/LasReader.hpp>
+#include <pdal/io/LasHeader.hpp>
+#include <pdal/Options.hpp>
+
+#include <png++/png.hpp>
 using namespace std;
 
 #define WIDTH 2048
@@ -9,7 +16,7 @@ using namespace std;
 
 struct Point {
 	double x, y, z;
-	uint8_t classification;
+	int classification;
 	uint8_t intensity;
 
 	double distance2(const Point &p) const {
@@ -25,7 +32,7 @@ struct Point {
 };
 
 class LasToHeightmap {
-	liblas::Reader las;
+	pdal::LasReader las_reader;
 
 	double offsetX;
 	double offsetY;
@@ -33,12 +40,10 @@ class LasToHeightmap {
 	double scaleX;
 	double scaleY;
 
-	void addPoint(liblas::Point lasPoint) {
-		double x = (lasPoint.GetX() - offsetX) * scaleX;
-		double y = (lasPoint.GetY() - offsetY) * scaleY;
-		double z = (lasPoint.GetZ() - offsetZ);
-		uint8_t classification = lasPoint.GetClassification().GetClass();
-		uint16_t intensity = lasPoint.GetIntensity();
+	void addPoint(double x, double y, double z, int classification, int intensity) {
+		x = (x - offsetX) * scaleX;
+		y = (y - offsetY) * scaleY;
+		z = (z - offsetZ);
 		intensity /= 256;
 
 		/* Skip vegetation, "other", and noise */
@@ -62,14 +67,22 @@ class LasToHeightmap {
 
 	std::vector<Point> (*pointMatrix)[WIDTH];
 
-	LasToHeightmap(std::ifstream &input_file) : las(input_file) {
+	LasToHeightmap(pdal::Options &las_opts) {
+		las_reader.setOptions(las_opts);
+
 		pointMatrix = new std::vector<Point>[HEIGHT][WIDTH]();
 	}
 
 	void perform() {
-		auto lasHeader = las.GetHeader();
-		offsetX = lasHeader.GetMinX();
-		offsetY = lasHeader.GetMaxY();
+		pdal::PointTable table;
+		las_reader.prepare(table);
+		pdal::PointViewSet point_view_set = las_reader.execute(table);
+		pdal::PointViewPtr point_view = *point_view_set.begin();
+		pdal::Dimension::IdList dims = point_view->dims();
+		pdal::LasHeader las_header = las_reader.header();
+
+		offsetX = las_header.minX();
+		offsetY = las_header.maxY();
 
 		offsetZ = -16;
 
@@ -77,10 +90,16 @@ class LasToHeightmap {
 		scaleX = WIDTH/1000.0;
 		scaleY = -HEIGHT/1000.0;
 
-		while (las.ReadNextPoint()) {
-			liblas::Point lasPoint = las.GetPoint();
+		for (pdal::PointId idx = 0; idx < point_view->size(); ++idx) {
+			using namespace pdal::Dimension;
+			double x = point_view->getFieldAs<double>(Id::X, idx);
+			double y = point_view->getFieldAs<double>(Id::Y, idx);
+			double z = point_view->getFieldAs<double>(Id::Z, idx);
 
-			addPoint(lasPoint);
+			int classification = point_view->getFieldAs<int>(Id::Classification, idx);
+			int intensity = point_view->getFieldAs<int>(Id::Intensity, idx);
+
+			addPoint(x, y, z, classification, intensity);
 		}
 	}
 
@@ -156,13 +175,11 @@ int main(int argc, char *argv[]) {
 
 	png::image<png::rgb_pixel> output_image(WIDTH, HEIGHT);
 
-	std::ifstream input_file(input_filename, ios::in | ios::binary);
-
-	liblas::ReaderFactory f;
-	liblas::Reader input_reader(input_file);
-
 	cout << "Collecting all points..." << endl;
-	LasToHeightmap lasToHeightmap(input_file);
+	pdal::Option las_opt("filename", input_filename);
+	pdal::Options las_opts;
+	las_opts.add(las_opt);
+	LasToHeightmap lasToHeightmap(las_opts);
 	lasToHeightmap.perform();
 
 	cout << "Creating heightmap..." << endl;
