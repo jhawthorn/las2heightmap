@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 	const char *input_filename = argv[1];
 	const char *output_filename = argv[2];
 
-	png::image<png::rgb_pixel> output_image(WIDTH, HEIGHT);
+	png::image<png::gray_pixel_16> output_image(WIDTH, HEIGHT);
 
 	cout << "Collecting all points..." << endl;
 	pdal::Option las_opt("filename", input_filename);
@@ -190,8 +190,9 @@ int main(int argc, char *argv[]) {
 			if (z < 0)
 				z = 0;
 			unsigned short iz = z * 256;
-			output_image[y][x] = png::rgb_pixel(p.intensity, iz >> 8, iz & 0xff);
+			//output_image[y][x] = png::rgb_pixel(p.intensity, iz >> 8, iz & 0xff);
 			//output_image[y][x] = png::rgb_pixel(z, z, z);
+			output_image[y][x] = png::gray_pixel_16(iz);
 		}
 	}
 
