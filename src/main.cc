@@ -9,10 +9,13 @@
 #include <pdal/Options.hpp>
 
 #include <png++/png.hpp>
+
+#include <cxxopts.hpp>
+
 using namespace std;
 
-#define WIDTH 2048
-#define HEIGHT 2048
+#define DEFAULT_WIDTH  "2048"
+#define DEFAULT_HEIGHT "2048"
 
 struct Point {
 	double x, y, z;
@@ -40,6 +43,9 @@ class LasToHeightmap {
 	double scaleX;
 	double scaleY;
 
+	int output_width;
+	int output_height;
+
 	void addPoint(double x, double y, double z, int classification, int intensity) {
 		x = (x - offsetX) * scaleX;
 		y = (y - offsetY) * scaleY;
@@ -50,27 +56,33 @@ class LasToHeightmap {
 		if (classification == 3 || classification == 4 || classification == 7 || classification == 8)
 			return;
 
-		if ((int)x >= WIDTH)
-			x = WIDTH-1;
-		if ((int)y >= HEIGHT)
-			y = HEIGHT-1;
+		if ((int)x >= output_width)
+			x = output_width - 1;
+		if ((int)y >= output_height)
+			y = output_height - 1;
+		if (x < 0)
+			x = 0;
+		if (y < 0)
+			y = 0;
 
 		if (intensity > 255)
 			intensity = 255;
 
 		Point point = {x,y,z,classification,(uint8_t)intensity};
 
-		pointMatrix[(int)y][(int)x].push_back(point);
+		pointsAt(x, y)->push_back(point);
 	}
 
 	public:
 
-	std::vector<Point> (*pointMatrix)[WIDTH];
+	std::vector<Point> *pointMatrix;
 
-	LasToHeightmap(pdal::Options &las_opts) {
+	LasToHeightmap(int width, int height, pdal::Options &las_opts) {
+		output_width = width;
+		output_height = height;
 		las_reader.setOptions(las_opts);
 
-		pointMatrix = new std::vector<Point>[HEIGHT][WIDTH]();
+		pointMatrix = new std::vector<Point>[width * height]();
 	}
 
 	void perform() {
@@ -81,14 +93,18 @@ class LasToHeightmap {
 		pdal::Dimension::IdList dims = point_view->dims();
 		pdal::LasHeader las_header = las_reader.header();
 
+		std::cerr << "X: " << las_header.minX() << " to " << las_header.maxX() << std::endl;
+		std::cerr << "Y: " << las_header.minY() << " to " << las_header.maxY() << std::endl;
+		std::cerr << "Z: " << las_header.minZ() << " to " << las_header.maxZ() << std::endl;
+		std::cerr << "output: " << output_width << "x" << output_height << std::endl;
+
 		offsetX = las_header.minX();
 		offsetY = las_header.maxY();
 
 		offsetZ = -16;
 
-		// FIXME: calculate this value
-		scaleX = WIDTH/1000.0;
-		scaleY = -HEIGHT/1000.0;
+		scaleX = output_width/1000.0;
+		scaleY = -output_height/1000.0;
 
 		for (pdal::PointId idx = 0; idx < point_view->size(); ++idx) {
 			using namespace pdal::Dimension;
@@ -104,10 +120,10 @@ class LasToHeightmap {
 	}
 
 	std::vector<Point> *pointsAt(int x, int y) {
-		if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
+		if (x < 0 || x >= output_width || y < 0 || y >= output_height) {
 			return NULL;
 		} else {
-			return &pointMatrix[y][x];
+			return &pointMatrix[y * output_width + x];
 		}
 	}
 
@@ -165,38 +181,60 @@ class LasToHeightmap {
 };
 
 int main(int argc, char *argv[]) {
-	if (argc != 3) {
-		cerr << "Usage: " << argv[0] << " INPUT OUTPUT" << endl;
-		return 1;
-	}
+	cxxopts::Options options("las2heightmap", "Convert las/laz files to png heightmap");
 
-	const char *input_filename = argv[1];
-	const char *output_filename = argv[2];
+	options.add_options()
+		("i,input", "Input file", cxxopts::value<std::string>())
+		("o,output", "Output file", cxxopts::value<std::string>())
+		("W,width", "Output width", cxxopts::value<unsigned int>()->default_value(DEFAULT_WIDTH))
+		("H,height", "Output height", cxxopts::value<unsigned int>()->default_value(DEFAULT_HEIGHT))
+		("h,help", "Print usage")
+		;
 
-	png::image<png::gray_pixel_16> output_image(WIDTH, HEIGHT);
+	try {
+		auto result = options.parse(argc, argv);
 
-	cout << "Collecting all points..." << endl;
-	pdal::Option las_opt("filename", input_filename);
-	pdal::Options las_opts;
-	las_opts.add(las_opt);
-	LasToHeightmap lasToHeightmap(las_opts);
-	lasToHeightmap.perform();
-
-	cout << "Creating heightmap..." << endl;
-	for (int y = 0; y < HEIGHT; y++) {
-		for (int x = 0; x < WIDTH; x++) {
-			Point p = lasToHeightmap.pointAt(x, y);
-			double z = p.z;
-			if (z < 0)
-				z = 0;
-			unsigned short iz = z * 256;
-			//output_image[y][x] = png::rgb_pixel(p.intensity, iz >> 8, iz & 0xff);
-			//output_image[y][x] = png::rgb_pixel(z, z, z);
-			output_image[y][x] = png::gray_pixel_16(iz);
+		if (result.count("help")) {
+			std::cout << options.help() << std::endl;
+			exit(0);
 		}
-	}
 
-	output_image.write(output_filename);
+		std::string input_filename = result["input"].as<std::string>();
+		std::string output_filename = result["output"].as<std::string>();
+
+		int width = result["width"].as<unsigned int>();
+		int height = result["height"].as<unsigned int>();
+
+		png::image<png::gray_pixel_16> output_image(width, height);
+
+		cout << "Collecting all points..." << endl;
+		pdal::Option las_opt("filename", input_filename);
+		pdal::Options las_opts;
+		las_opts.add(las_opt);
+		LasToHeightmap lasToHeightmap(width, height, las_opts);
+		lasToHeightmap.perform();
+
+		cout << "Creating heightmap..." << endl;
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				Point p = lasToHeightmap.pointAt(x, y);
+				double z = p.z;
+				if (z < 0)
+					z = 0;
+				unsigned short iz = z * 256;
+				//output_image[y][x] = png::rgb_pixel(p.intensity, iz >> 8, iz & 0xff);
+				//output_image[y][x] = png::rgb_pixel(z, z, z);
+				output_image[y][x] = png::gray_pixel_16(iz);
+			}
+		}
+
+		output_image.write(output_filename);
+	} catch (const cxxopts::OptionException &e) {
+		std::cerr << options.help() << std::endl;
+		std::cerr << std::endl;
+		std::cerr << "ERROR: " << e.what() << std::endl;
+		exit(1);
+	}
 
 	return 0;
 }
